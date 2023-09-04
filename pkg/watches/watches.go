@@ -82,7 +82,7 @@ func LoadReader(reader io.Reader) ([]Watch, error) {
 			return nil, fmt.Errorf("invalid GVK: %s: %w", gvk, err)
 		}
 
-		if w.ChartDefaultVersion != nil {
+		if w.ChartDefaultVersion == nil {
 			cl, err := loader.Load(w.ChartPath)
 			if err != nil {
 				return nil, fmt.Errorf("invalid chart %s: %w", w.ChartPath, err)
