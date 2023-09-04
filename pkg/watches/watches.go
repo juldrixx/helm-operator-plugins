@@ -33,7 +33,7 @@ import (
 type Watch struct {
 	schema.GroupVersionKind `json:",inline"`
 	ChartPath               string  `json:"chart"`
-	ChartDefaultVersion     *string `json:"defaultChartVersion,omitempty"`
+	ChartDefaultVersion     *string `json:"chartDefaultVersion,omitempty"`
 
 	WatchDependentResources *bool                 `json:"watchDependentResources,omitempty"`
 	OverrideValues          map[string]string     `json:"overrideValues,omitempty"`
