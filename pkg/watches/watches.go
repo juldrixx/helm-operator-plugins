@@ -32,7 +32,8 @@ import (
 
 type Watch struct {
 	schema.GroupVersionKind `json:",inline"`
-	ChartPath               string `json:"chart"`
+	ChartPath               string  `json:"chart"`
+	ChartDefaultVersion     *string `json:"defaultChartVersion,omitempty"`
 
 	WatchDependentResources *bool                 `json:"watchDependentResources,omitempty"`
 	OverrideValues          map[string]string     `json:"overrideValues,omitempty"`
@@ -81,11 +82,19 @@ func LoadReader(reader io.Reader) ([]Watch, error) {
 			return nil, fmt.Errorf("invalid GVK: %s: %w", gvk, err)
 		}
 
-		cl, err := loader.Load(w.ChartPath)
-		if err != nil {
-			return nil, fmt.Errorf("invalid chart %s: %w", w.ChartPath, err)
+		if w.ChartDefaultVersion != nil {
+			cl, err := loader.Load(w.ChartPath)
+			if err != nil {
+				return nil, fmt.Errorf("invalid chart %s: %w", w.ChartPath, err)
+			}
+			w.Chart = cl
+		} else {
+			cl, err := loader.Load(fmt.Sprintf("%s/%s", w.ChartPath, *w.ChartDefaultVersion))
+			if err != nil {
+				return nil, fmt.Errorf("invalid default chart %s/%s: %w", w.ChartPath, *w.ChartDefaultVersion, err)
+			}
+			w.Chart = cl
 		}
-		w.Chart = cl
 
 		if _, ok := watchesMap[gvk]; ok {
 			return nil, fmt.Errorf("duplicate GVK: %s", gvk)
