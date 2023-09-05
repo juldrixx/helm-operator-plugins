@@ -71,6 +71,11 @@ type Uninstall interface {
 	UninstallOption(string) helmclient.UninstallOption
 }
 
+// Custom configures a custom annotation.
+type Custom interface {
+	Name() string
+}
+
 const (
 	defaultDomain                    = "helm.sdk.operatorframework.io"
 	defaultInstallDisableHooksName   = defaultDomain + "/install-disable-hooks"
@@ -82,7 +87,22 @@ const (
 	defaultInstallDescriptionName   = defaultDomain + "/install-description"
 	defaultUpgradeDescriptionName   = defaultDomain + "/upgrade-description"
 	defaultUninstallDescriptionName = defaultDomain + "/uninstall-description"
+
+	defaultChartVersionName = defaultDomain + "/chart-version"
 )
+
+type ChartVersion struct {
+	CustomName string
+}
+
+var _ Custom = &ChartVersion{}
+
+func (c ChartVersion) Name() string {
+	if c.CustomName != "" {
+		return c.CustomName
+	}
+	return defaultChartVersionName
+}
 
 type InstallDisableHooks struct {
 	CustomName string
