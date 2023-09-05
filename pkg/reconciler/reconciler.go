@@ -91,7 +91,7 @@ type Reconciler struct {
 	installAnnotations   map[string]annotation.Install
 	upgradeAnnotations   map[string]annotation.Upgrade
 	uninstallAnnotations map[string]annotation.Uninstall
-	chartAnnotation      annotation.ChartVersion
+	chartAnnotation      string
 }
 
 // New creates a new Reconciler that reconciles custom resources that define a
@@ -126,7 +126,6 @@ func (r *Reconciler) setupAnnotationMaps() {
 	r.installAnnotations = make(map[string]annotation.Install)
 	r.upgradeAnnotations = make(map[string]annotation.Upgrade)
 	r.uninstallAnnotations = make(map[string]annotation.Uninstall)
-	r.chartAnnotation = annotation.ChartVersion{}
 }
 
 // SetupWithManager configures a controller for the Reconciler and registers
@@ -450,17 +449,16 @@ func WithUninstallAnnotations(as ...annotation.Uninstall) Option {
 // WithChartAnnotations is an Option that configures Chart annotations
 // to manipulate the chart to reconcile.
 // Duplicate annotation names will result in an error.
-func WithChartAnnotations(a annotation.ChartVersion) Option {
+func WithChartAnnotations(name string) Option {
 	return func(r *Reconciler) error {
 		r.annotSetupOnce.Do(r.setupAnnotationMaps)
 
-		name := a.Name()
 		if _, ok := r.annotations[name]; ok {
 			return fmt.Errorf("annotation %q already exists", name)
 		}
 
 		r.annotations[name] = struct{}{}
-		r.chartAnnotation = a
+		r.chartAnnotation = name
 		return nil
 	}
 }
@@ -658,7 +656,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.
 
 	if r.chrtDefaultVersion != nil {
 		chartPath := fmt.Sprintf("%s/%s", r.chrtPath, *r.chrtDefaultVersion)
-		if v, ok := obj.GetAnnotations()[r.chartAnnotation.Name()]; ok {
+		if v, ok := obj.GetAnnotations()[r.chartAnnotation]; ok {
 			chartPath = fmt.Sprintf("%s/%s", r.chrtPath, v)
 		}
 

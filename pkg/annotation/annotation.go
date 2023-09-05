@@ -51,7 +51,7 @@ var (
 	DefaultInstallAnnotations     = []Install{InstallDescription{}, InstallDisableHooks{}}
 	DefaultUpgradeAnnotations     = []Upgrade{UpgradeDescription{}, UpgradeDisableHooks{}, UpgradeForce{}}
 	DefaultUninstallAnnotations   = []Uninstall{UninstallDescription{}, UninstallDisableHooks{}}
-	DefaultChartVersionAnnotation = ChartVersion{}
+	DefaultChartVersionAnnotation = defaultChartVersionName
 )
 
 // Install configures an install annotation.
@@ -86,17 +86,6 @@ const (
 
 	defaultChartVersionName = defaultDomain + "/chart-version"
 )
-
-type ChartVersion struct {
-	CustomName string
-}
-
-func (c ChartVersion) Name() string {
-	if c.CustomName != "" {
-		return c.CustomName
-	}
-	return defaultChartVersionName
-}
 
 type InstallDisableHooks struct {
 	CustomName string
