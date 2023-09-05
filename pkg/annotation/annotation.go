@@ -48,10 +48,10 @@ import (
 )
 
 var (
-	DefaultInstallAnnotations   = []Install{InstallDescription{}, InstallDisableHooks{}}
-	DefaultUpgradeAnnotations   = []Upgrade{UpgradeDescription{}, UpgradeDisableHooks{}, UpgradeForce{}}
-	DefaultUninstallAnnotations = []Uninstall{UninstallDescription{}, UninstallDisableHooks{}}
-	DefaultCustomAnnotations    = []Custom{ChartVersion{}}
+	DefaultInstallAnnotations     = []Install{InstallDescription{}, InstallDisableHooks{}}
+	DefaultUpgradeAnnotations     = []Upgrade{UpgradeDescription{}, UpgradeDisableHooks{}, UpgradeForce{}}
+	DefaultUninstallAnnotations   = []Uninstall{UninstallDescription{}, UninstallDisableHooks{}}
+	DefaultChartVersionAnnotation = ChartVersion{}
 )
 
 // Install configures an install annotation.
@@ -72,11 +72,6 @@ type Uninstall interface {
 	UninstallOption(string) helmclient.UninstallOption
 }
 
-// Custom configures a custom annotation.
-type Custom interface {
-	Name() string
-}
-
 const (
 	defaultDomain                    = "helm.sdk.operatorframework.io"
 	defaultInstallDisableHooksName   = defaultDomain + "/install-disable-hooks"
@@ -95,8 +90,6 @@ const (
 type ChartVersion struct {
 	CustomName string
 }
-
-var _ Custom = &ChartVersion{}
 
 func (c ChartVersion) Name() string {
 	if c.CustomName != "" {

@@ -24,12 +24,12 @@ import (
 	"sync"
 	"time"
 
-	errs "github.com/pkg/errors"
-
 	"github.com/go-logr/logr"
 	sdkhandler "github.com/operator-framework/operator-lib/handler"
+	errs "github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/storage/driver"
@@ -75,6 +75,8 @@ type Reconciler struct {
 	log                              logr.Logger
 	gvk                              *schema.GroupVersionKind
 	chrt                             *chart.Chart
+	chrtPath                         string
+	chrtDefaultVersion               *string
 	selectorPredicate                predicate.Predicate
 	overrideValues                   map[string]string
 	skipDependentWatches             bool
@@ -89,7 +91,7 @@ type Reconciler struct {
 	installAnnotations   map[string]annotation.Install
 	upgradeAnnotations   map[string]annotation.Upgrade
 	uninstallAnnotations map[string]annotation.Uninstall
-	customAnnotations    map[string]annotation.Custom
+	chartAnnotation      annotation.ChartVersion
 }
 
 // New creates a new Reconciler that reconciles custom resources that define a
@@ -124,7 +126,7 @@ func (r *Reconciler) setupAnnotationMaps() {
 	r.installAnnotations = make(map[string]annotation.Install)
 	r.upgradeAnnotations = make(map[string]annotation.Upgrade)
 	r.uninstallAnnotations = make(map[string]annotation.Uninstall)
-	r.customAnnotations = make(map[string]annotation.Custom)
+	r.chartAnnotation = annotation.ChartVersion{}
 }
 
 // SetupWithManager configures a controller for the Reconciler and registers
@@ -232,6 +234,26 @@ func WithGroupVersionKind(gvk schema.GroupVersionKind) Option {
 func WithChart(chrt chart.Chart) Option {
 	return func(r *Reconciler) error {
 		r.chrt = &chrt
+		return nil
+	}
+}
+
+// WithChartPath is an Option that configures a Reconciler's helm chart path.
+//
+// This option is required.
+func WithChartPath(chrtPath string) Option {
+	return func(r *Reconciler) error {
+		r.chrtPath = chrtPath
+		return nil
+	}
+}
+
+// WithChartDefaultVersion is an Option that configures a Reconciler's helm chart default version.
+//
+// This option is required.
+func WithChartDefaultVersion(chrtDefaultVersion *string) Option {
+	return func(r *Reconciler) error {
+		r.chrtDefaultVersion = chrtDefaultVersion
 		return nil
 	}
 }
@@ -425,21 +447,20 @@ func WithUninstallAnnotations(as ...annotation.Uninstall) Option {
 	}
 }
 
-// WithCustomAnnotations is an Option that configures Custom annotations.
+// WithChartAnnotations is an Option that configures Chart annotations
+// to manipulate the chart to reconcile.
 // Duplicate annotation names will result in an error.
-func WithCustomAnnotations(as ...annotation.Custom) Option {
+func WithChartAnnotations(a annotation.ChartVersion) Option {
 	return func(r *Reconciler) error {
 		r.annotSetupOnce.Do(r.setupAnnotationMaps)
 
-		for _, a := range as {
-			name := a.Name()
-			if _, ok := r.annotations[name]; ok {
-				return fmt.Errorf("annotation %q already exists", name)
-			}
-
-			r.annotations[name] = struct{}{}
-			r.customAnnotations[name] = a
+		name := a.Name()
+		if _, ok := r.annotations[name]; ok {
+			return fmt.Errorf("annotation %q already exists", name)
 		}
+
+		r.annotations[name] = struct{}{}
+		r.chartAnnotation = a
 		return nil
 	}
 }
@@ -635,10 +656,17 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (res ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	for name, _ := range r.customAnnotations {
-		if v, ok := obj.GetAnnotations()[name]; ok {
-			log.Info(fmt.Sprintf("Found annotation %s with value %s", name, v))
+	if r.chrtDefaultVersion != nil {
+		chartPath := fmt.Sprintf("%s/%s", r.chrtPath, *r.chrtDefaultVersion)
+		if v, ok := obj.GetAnnotations()[r.chartAnnotation.Name()]; ok {
+			chartPath = fmt.Sprintf("%s/%s", r.chrtPath, v)
 		}
+
+		cl, err := loader.Load(chartPath)
+		if err != nil {
+			return ctrl.Result{}, fmt.Errorf("invalid chart %s: %w", chartPath, err)
+		}
+		r.chrt = cl
 	}
 
 	vals, err := r.getValues(ctx, obj)
