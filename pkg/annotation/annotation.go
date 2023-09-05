@@ -51,6 +51,7 @@ var (
 	DefaultInstallAnnotations   = []Install{InstallDescription{}, InstallDisableHooks{}}
 	DefaultUpgradeAnnotations   = []Upgrade{UpgradeDescription{}, UpgradeDisableHooks{}, UpgradeForce{}}
 	DefaultUninstallAnnotations = []Uninstall{UninstallDescription{}, UninstallDisableHooks{}}
+	DefaultCustomAnnotations    = []Custom{ChartVersion{}}
 )
 
 // Install configures an install annotation.
